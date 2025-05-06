@@ -2,7 +2,10 @@
   "$schema": "https://www.flowlauncher.com/schemas/plugin.schema.json",
   "ID": "88cd85b4-e12b-4982-b302-21e37e51e355",
   "ActionKeywords": [
-    "tasks"
+    "tasks",
+    "task",
+    "calendar",
+    "cal"
   ],
   "Name": "Google Services",
   "Description": "A Flow Launcher plugin to interact with Google services such as Tasks, Calendar, and Maps",
