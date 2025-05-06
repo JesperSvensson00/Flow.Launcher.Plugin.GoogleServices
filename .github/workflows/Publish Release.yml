@@ -3,35 +3,46 @@ name: Publish Release
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
-    paths-ignore: 
+    branches: [main]
+    paths-ignore:
       - .github/workflows/*
 
 jobs:
   publish:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v2
-      - name: Set up Node.Js
+      - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '17.3.0'
+          node-version: "20.x"
       - name: get version
         id: version
         uses: notiz-dev/github-action-json-property@release
-        with: 
-          path: 'plugin.json'
-          prop_path: 'Version'
-      - run: echo ${{steps.version.outputs.prop}} 
-      - name: Install dependencies
+        with:
+          path: "plugin.json"
+          prop_path: "Version"
+      - run: echo ${{steps.version.outputs.prop}}
+      - name: Install and Build
         run: |
-          npm install
-          zip -r Flow.Launcher.Plugin.HelloWorldNodeJS.zip . -x '*.git*'
+          npm ci
+          npm run build
+      - name: Remove node_modules
+        uses: JesseTG/rm@v1.0.2
+        with:
+          path: node_modules
+      - name: Install prod
+        run: npm i --production
+      - name: Pack
+        run: zip -r Flow.Launcher.Plugin.GoogleServices.zip . -x '*.git*' -x '*.gif'
       - name: Publish
         uses: softprops/action-gh-release@v1
         with:
-          files: 'Flow.Launcher.Plugin.HelloWorldNodeJS.zip'
+          files: "Flow.Launcher.Plugin.GoogleServices.zip"
           tag_name: "v${{steps.version.outputs.prop}}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
