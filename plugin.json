@@ -7,8 +7,8 @@
     "calendar",
     "cal"
   ],
-  "Name": "Google Services",
-  "Description": "A Flow Launcher plugin to interact with Google services such as Tasks, Calendar, and Maps",
+  "Name": "Google Tasks",
+  "Description": "A Flow Launcher plugin to interact with Google Tasks",
   "Author": "Jesper Svensson",
   "Version": "0.1.0",
   "Language": "typescript",
