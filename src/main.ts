@@ -44,13 +44,7 @@ type Methods =
   | "help"
   | "debug";
 
-interface Settings {
-  favoriteListId: string | undefined;
-}
-
-const { on, showResult, run, settings } = new Flow<Methods, Settings>(
-  "Images\\app.png"
-);
+const { on, showResult, run } = new Flow<Methods>("Images\\app.png");
 
 const commands = [
   "add",
@@ -100,10 +94,8 @@ on("query", async (params: FlowParameters) => {
   const results: JSONRPCResponse<Methods>[] = [];
 
   if (command === "add" || command === "a") {
-    if (
-      settings.favoriteListId === undefined ||
-      settings.favoriteListId === ""
-    ) {
+    const listId = getData("favoriteListId");
+    if (listId === undefined || listId === "") {
       showResult({
         title: "Google Tasks",
         subtitle: "No favorite list set. Use 'tasks lists' to set one.",
@@ -127,27 +119,52 @@ on("query", async (params: FlowParameters) => {
       title: `Add task "${commandArgsString}"`,
       subtitle: `Add task at ${dueString ?? "no date"}`,
       method: "add_task",
-      params: [title, dueDate, "", settings.favoriteListId],
+      params: [title, dueDate, "", listId],
       score: 100,
     });
   }
 
   if (command === "list" || command === "l") {
+    const listId = getData("favoriteListId");
+    if (listId === undefined || listId === "") {
+      showResult({
+        title: "Google Tasks",
+        subtitle: "No favorite list set. Use 'tasks lists' to set one.",
+        score: 100,
+      });
+      return;
+    }
+
     const authClient = await getAuthenticatedClient();
+    if (!authClient) {
+      showResult({
+        title: "Google Tasks",
+        subtitle: "Not authenticated. Please sign in.",
+        score: 100,
+      });
+      return;
+    }
+
     const tasksApi = google.tasks({ version: "v1", auth: authClient });
 
     // Fetch tasks from Google Tasks API
-
     const tasksRes = await tasksApi.tasks.list({
-      tasklist: settings.favoriteListId,
+      tasklist: listId,
     });
 
     const tasks = tasksRes.data.items ?? [];
     tasks.forEach((task: tasks_v1.Schema$Task) => {
       if (!task.completed) {
+        const dueString = task.due
+          ? new Date(task.due).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })
+          : undefined;
+
         results.push({
           title: task.title || "No title",
-          subtitle: `Due: ${task.due}`,
+          subtitle: dueString ? `Due: ${dueString}` : "No due date",
           score: 100,
         });
       }
@@ -166,7 +183,7 @@ on("query", async (params: FlowParameters) => {
     taskLists.forEach((task) => {
       results.push({
         title: task.title || "No title",
-        subtitle: `Press to copy list ID`,
+        subtitle: `Make favorite`,
         method: "set_favorite",
         params: [task.id ?? ""],
         score: 100,
@@ -186,7 +203,7 @@ on("query", async (params: FlowParameters) => {
     const authClient = await getAuthenticatedClient();
     results.push({
       title: "Debug",
-      subtitle: `Info: ${authClient.credentials.access_token}`,
+      subtitle: `Info: `,
       method: "debug",
       params: [],
       dontHideAfterAction: true,
@@ -197,7 +214,7 @@ on("query", async (params: FlowParameters) => {
   if (command === "logout") {
     results.push({
       title: "Sign out",
-      subtitle: `Sign out of Google Tasks, this will remove the stored token`,
+      subtitle: `Sign out of Google Tasks, this will remove the stored token.`,
       method: "sign_out",
       params: [],
       score: 100,
@@ -234,6 +251,9 @@ on("list_tasks", async () => {
 on("set_favorite", async (params) => {
   // Copy the id to the clipboard
   copy(params[0] as string);
+
+  // Store the id in local file
+  storeData("favoriteListId", params[0] as string);
 });
 
 on("add_task", async (params) => {
@@ -268,21 +288,13 @@ on("add_task", async (params) => {
 });
 
 on("sign_out", async () => {
-  const res = await signOut();
+  await signOut();
 });
 
 on("debug", async (params) => {
-  // try {
-  //   // Don't log the entire auth client object as it can be very large
-  //   console.log("Starting authentication debug process...");
-  //   // Try to get an authenticated client
   const authClient = await getAuthenticatedClient();
   // console.log("Authenticated client:", JSON.stringify(authClient.credentials.access_token));
   open("http://localhost:3000/?test=" + authClient.credentials.access_token);
-  // console.log("Authenticated client:", authClient);
-  // } catch (error) {
-  //   console.error("Error during authentication:", error);
-  // }
 });
 
 function parseDueDate(dateString: string | undefined): string | undefined {
@@ -323,6 +335,21 @@ function parseDueDate(dateString: string | undefined): string | undefined {
 
   // If the date string is not in a valid format, return undefined
   return undefined;
+}
+
+function storeData(key: string, value: string) {
+  const data = JSON.parse(fs.readFileSync("data.json", "utf-8"));
+  data[key] = value;
+  fs.writeFileSync("data.json", JSON.stringify(data, null, 2));
+}
+
+function getData(key: string) {
+  if (!fs.existsSync("data.json")) {
+    fs.writeFileSync("data.json", JSON.stringify({}));
+    return undefined;
+  }
+  const data = JSON.parse(fs.readFileSync("data.json", "utf-8"));
+  return data[key] as string | undefined;
 }
 
 run();

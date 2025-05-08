@@ -1,6 +1,0 @@
-body:
-  - type: input
-    attributes:
-      name: favoriteListId
-      label: Favorite list ID
-      description: This will be the list of tasks where new once will be added by default

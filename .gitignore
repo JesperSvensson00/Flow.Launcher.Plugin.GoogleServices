@@ -3,4 +3,6 @@ node_modules
 build
 
 token.json
+data.json
+
 *.log
